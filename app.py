@@ -23,7 +23,8 @@ def is_domain_available(domain):
         response = requests.get(API_URL, headers=HEADERS, params={"domain": domain})
         data = response.json()
         status_info = data.get("status", [{}])[0].get("status", "")
-        return "available" in status_info
+        # Hybrid logic: .ai domains often show as 'undelegated inactive' instead of 'available'
+        return any(tag in status_info for tag in ["undelegated", "inactive"]) and "taken" not in status_info
     except Exception as e:
         return False
 
