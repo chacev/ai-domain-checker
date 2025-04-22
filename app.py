@@ -23,7 +23,7 @@ def is_domain_available(domain):
         response = requests.get(API_URL, headers=HEADERS, params={"domain": domain})
         data = response.json()
         status_info = data.get("status", [{}])[0].get("status", "")
-        return "undelegated" in status_info or "inactive" in status_info
+        return "available" in status_info
     except Exception as e:
         return False
 
