@@ -9,7 +9,7 @@ st.set_page_config(page_title=".ai Domain Checker", layout="wide")
 st.title("🔍 .ai Domain Availability Checker")
 
 # --- API Config ---
-API_KEY = st.secrets.get("RAPIDAPI_KEY", "")  # Put your key in .streamlit/secrets.toml
+API_KEY = st.secrets.get("RAPIDAPI_KEY", "")  # Set this in Streamlit secrets
 API_HOST = "domainr.p.rapidapi.com"
 API_URL = "https://domainr.p.rapidapi.com/v2/status"
 HEADERS = {
@@ -37,7 +37,7 @@ st.sidebar.header("Upload or Paste Word List")
 input_method = st.sidebar.radio("Input Method", ["Paste text", "Upload .txt file"])
 
 if input_method == "Paste text":
-    word_input = st.sidebar.text_area("Paste your words here (one line, space separated)", height=150)
+    word_input = st.sidebar.text_area("Paste your words here (space or line separated)", height=150)
     words = filter_words(word_input)
 elif input_method == "Upload .txt file":
     uploaded_file = st.sidebar.file_uploader("Upload .txt file", type="txt")
@@ -50,20 +50,25 @@ elif input_method == "Upload .txt file":
 if words:
     st.success(f"Loaded {len(words)} valid words. Ready to check!")
     if st.button("Check Domain Availability"):
-        results = []
-        with st.spinner("Checking domains, please wait..."):
-            for i, word in enumerate(words):
-                domain = f"{word}.ai"
-                available = is_domain_available(domain)
-                results.append((domain, "✅ Available" if available else "❌ Taken"))
-                time.sleep(0.5)  # Respect API limits
+        st.subheader("Checking .ai domains...")
 
-        st.subheader("Results")
-        for domain, status in results:
-            st.write(f"**{domain}** — {status}")
+        results_log = []
+        results_box = st.empty()
+        progress_bar = st.progress(0)
 
-        # Download results
-        downloadable = "\n".join([f"{d} - {s}" for d, s in results])
+        for i, word in enumerate(words):
+            domain = f"{word}.ai"
+            available = is_domain_available(domain)
+            result = f"**{domain}** — {'✅ Available' if available else '❌ Taken'}"
+            results_log.append(result)
+
+            # Update results in real-time
+            results_box.markdown("\n".join(results_log))
+            progress_bar.progress((i + 1) / len(words))
+            time.sleep(0.5)  # Respect API limits
+
+        # Download button for results
+        downloadable = "\n".join(results_log)
         st.download_button("Download Results", downloadable, file_name="ai_domain_results.txt")
 else:
     st.info("Please paste or upload a word list to get started.")
