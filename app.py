@@ -28,7 +28,7 @@ def is_domain_available(domain):
         return False
 
 def extract_words(text):
-    return list(dict.fromkeys(re.findall(r"\b[a-zA-Z]{2,}\b", text.lower())))
+    return list(dict.fromkeys(re.findall(r"[a-zA-Z0-9]{2,}", text.lower())))
 
 # --- SIDEBAR INPUT ---
 st.sidebar.header("Upload or Paste Word List")
