@@ -4,11 +4,11 @@ import requests
 import time
 import re
 
-# Set page config
+# --- PAGE CONFIG ---
 st.set_page_config(page_title=".ai Domain Checker", layout="wide")
 st.title("🔍 .ai Domain Availability Checker")
 
-# --- API Config ---
+# --- API CONFIG ---
 API_KEY = st.secrets.get("RAPIDAPI_KEY", "")
 API_HOST = "domainr.p.rapidapi.com"
 API_URL = "https://domainr.p.rapidapi.com/v2/status"
@@ -17,7 +17,7 @@ HEADERS = {
     "x-rapidapi-key": API_KEY,
 }
 
-# --- Helper Functions ---
+# --- HELPER FUNCTIONS ---
 def is_domain_available(domain):
     try:
         response = requests.get(API_URL, headers=HEADERS, params={"domain": domain})
@@ -32,32 +32,40 @@ def filter_words(text):
     words = re.findall(r"\b[a-z]{2,10}\b", text.lower())
     return sorted(set(words))
 
-# --- Sidebar Input ---
+# --- INITIALIZE SESSION STATE ---
+if "start_checking" not in st.session_state:
+    st.session_state.start_checking = False
+if "words" not in st.session_state:
+    st.session_state.words = []
+
+# --- SIDEBAR INPUT ---
 st.sidebar.header("Upload or Paste Word List")
 input_method = st.sidebar.radio("Input Method", ["Paste text", "Upload .txt file"])
 
-words = []
+new_words = []
 if input_method == "Paste text":
     word_input = st.sidebar.text_area("Paste your words here (space or line separated)", height=150)
-    words = filter_words(word_input)
+    new_words = filter_words(word_input)
 elif input_method == "Upload .txt file":
     uploaded_file = st.sidebar.file_uploader("Upload .txt file", type="txt")
     if uploaded_file:
         content = uploaded_file.read().decode("utf-8")
-        words = filter_words(content)
+        new_words = filter_words(content)
 
-# --- Button State ---
-if "start_checking" not in st.session_state:
-    st.session_state["start_checking"] = False
+# Update session state if the word list has changed
+if new_words != st.session_state.words:
+    st.session_state.words = new_words
+    st.session_state.start_checking = False  # Reset the search state
 
-# --- Word Handling and UI ---
-if words and len(words) > 0:
+# --- MAIN LOGIC ---
+words = st.session_state.words
+
+if words:
     st.success(f"Loaded {len(words)} valid words.")
     if st.button("Start Searching for Available .ai Domains"):
-        st.session_state["start_checking"] = True
+        st.session_state.start_checking = True
 
-# --- Run Domain Checks ---
-if st.session_state["start_checking"]:
+if st.session_state.start_checking:
     st.subheader("Checking .ai domains...")
 
     results_log = []
