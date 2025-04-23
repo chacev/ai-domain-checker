@@ -23,9 +23,8 @@ def is_domain_available(domain):
         response = requests.get(API_URL, headers=HEADERS, params={"domain": domain})
         data = response.json()
         status_info = data.get("status", [{}])[0].get("status", "")
-        # Hybrid logic: .ai domains often show as 'undelegated inactive' instead of 'available'
         return any(tag in status_info for tag in ["undelegated", "inactive"]) and "taken" not in status_info
-    except Exception as e:
+    except Exception:
         return False
 
 @st.cache_data(show_spinner=False)
@@ -47,29 +46,33 @@ elif input_method == "Upload .txt file":
         content = uploaded_file.read().decode("utf-8")
         words = filter_words(content)
 
-# --- Main Panel ---
+# --- UI Logic ---
+search_triggered = False
+
 if words:
-    st.success(f"Loaded {len(words)} valid words. Ready to check!")
-    if st.button("Check Domain Availability"):
-        st.subheader("Checking .ai domains...")
+    st.success(f"Loaded {len(words)} valid words.")
+    search_triggered = st.button("Start Searching for Available .ai Domains")
 
-        results_log = []
-        results_box = st.empty()
-        progress_bar = st.progress(0)
+if search_triggered:
+    st.subheader("Checking .ai domains...")
 
-        for i, word in enumerate(words):
-            domain = f"{word}.ai"
-            available = is_domain_available(domain)
-            result = f"**{domain}** — {'✅ Available' if available else '❌ Taken'}"
-            results_log.append(result)
+    results_log = []
+    results_box = st.empty()
+    progress_bar = st.progress(0)
 
-            # Update results in real-time
-            results_box.markdown("\n".join(results_log))
-            progress_bar.progress((i + 1) / len(words))
-            time.sleep(0.5)  # Respect API limits
+    for i, word in enumerate(words):
+        domain = f"{word}.ai"
+        available = is_domain_available(domain)
+        result = f"**{domain}** — {'✅ Available' if available else '❌ Taken'}"
+        results_log.append(result)
 
-        # Download button for results
-        downloadable = "\n".join(results_log)
-        st.download_button("Download Results", downloadable, file_name="ai_domain_results.txt")
+        # Update results in real-time
+        results_box.markdown("\n".join(results_log))
+        progress_bar.progress((i + 1) / len(words))
+        time.sleep(0.5)  # Respect API limits
+
+    # Downloadable result
+    downloadable = "\n".join(results_log)
+    st.download_button("Download Results", downloadable, file_name="ai_domain_results.txt")
 else:
     st.info("Please paste or upload a word list to get started.")
