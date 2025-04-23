@@ -27,62 +27,45 @@ def is_domain_available(domain):
     except Exception:
         return False
 
-@st.cache_data(show_spinner=False)
-def filter_words(text):
-    words = re.findall(r"\b[a-z]{2,10}\b", text.lower())
-    return sorted(set(words))
-
-# --- INITIALIZE SESSION STATE ---
-if "start_checking" not in st.session_state:
-    st.session_state.start_checking = False
-if "words" not in st.session_state:
-    st.session_state.words = []
+def extract_words(text):
+    return list(dict.fromkeys(re.findall(r"\b[a-zA-Z]{2,}\b", text.lower())))
 
 # --- SIDEBAR INPUT ---
 st.sidebar.header("Upload or Paste Word List")
 input_method = st.sidebar.radio("Input Method", ["Paste text", "Upload .txt file"])
 
-new_words = []
+raw_words = []
 if input_method == "Paste text":
-    word_input = st.sidebar.text_area("Paste your words here (space or line separated)", height=150)
-    new_words = filter_words(word_input)
+    raw_text = st.sidebar.text_area("Paste your words here (space or line separated)", height=150)
+    raw_words = extract_words(raw_text)
 elif input_method == "Upload .txt file":
     uploaded_file = st.sidebar.file_uploader("Upload .txt file", type="txt")
     if uploaded_file:
         content = uploaded_file.read().decode("utf-8")
-        new_words = filter_words(content)
+        raw_words = extract_words(content)
 
-# Update session state if the word list has changed
-if new_words != st.session_state.words:
-    st.session_state.words = new_words
-    st.session_state.start_checking = False  # Reset the search state
+# --- ALWAYS SHOW BUTTON ---
+start_search = st.button("🚀 Start Searching for Available .ai Domains")
 
-# --- MAIN LOGIC ---
-words = st.session_state.words
+# --- RUN DOMAIN CHECK ---
+if start_search:
+    if not raw_words:
+        st.warning("No words found. Please paste or upload a valid word list.")
+    else:
+        st.success(f"Searching {len(raw_words)} domains...")
+        results_log = []
+        results_box = st.empty()
+        progress_bar = st.progress(0)
 
-if words:
-    st.success(f"Loaded {len(words)} valid words.")
-    if st.button("Start Searching for Available .ai Domains"):
-        st.session_state.start_checking = True
+        for i, word in enumerate(raw_words):
+            domain = f"{word}.ai"
+            available = is_domain_available(domain)
+            result = f"**{domain}** — {'✅ Available' if available else '❌ Taken'}"
+            results_log.append(result)
 
-if st.session_state.start_checking:
-    st.subheader("Checking .ai domains...")
+            results_box.markdown("\n".join(results_log))
+            progress_bar.progress((i + 1) / len(raw_words))
+            time.sleep(0.5)
 
-    results_log = []
-    results_box = st.empty()
-    progress_bar = st.progress(0)
-
-    for i, word in enumerate(words):
-        domain = f"{word}.ai"
-        available = is_domain_available(domain)
-        result = f"**{domain}** — {'✅ Available' if available else '❌ Taken'}"
-        results_log.append(result)
-
-        results_box.markdown("\n".join(results_log))
-        progress_bar.progress((i + 1) / len(words))
-        time.sleep(0.5)
-
-    downloadable = "\n".join(results_log)
-    st.download_button("Download Results", downloadable, file_name="ai_domain_results.txt")
-else:
-    st.info("Please paste or upload a word list to get started.")
+        downloadable = "\n".join(results_log)
+        st.download_button("Download Results", downloadable, file_name="ai_domain_results.txt")
